@@ -62,7 +62,7 @@ chart_data = {
     "Sentiment Type": ["Negative", "Neutral", "Positive"],
     "Score": [company_stats['negative'], company_stats['neutral'], company_stats['positive']]
 }
-st.bar_chart(data=chart_data, x="Sentiment Type", y="Score", color=["#FF4B4B", "#BEBEBE", "#00CC99"])
+st.bar_chart(data=chart_data, x="Sentiment Type", y="Score")
 
 # Add contextual notes (your domain expertise) explaining the findings
 st.info("""
