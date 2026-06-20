@@ -11,7 +11,6 @@ st.write("Triangulating descriptive operational moats, NLP risk sentiment (FinBE
 
 # --- DATABASE / DICTIONARIES (Standardized by Ticker Keys) ---
 
-# Mapping dictionary for the dropdown: Display Name -> Ticker Key
 company_options = {
     "Public Storage (PSA)": "PSA",
     "Extra Space Storage (EXR)": "EXR",
@@ -19,7 +18,6 @@ company_options = {
     "U-Haul (UHAL)": "UHAL"
 }
 
-# 1. Descriptive Item 1 Overviews (Using strictly Ticker keys)
 item1_overviews = {
     "PSA": "Industry giant with massive geographic scale, high operating margins, and substantial balance sheet reserves. Competes heavily on local economies of scale and brand recognition.",
     "EXR": "Sunbelt-heavy exposure with an aggressive third-party management platform and large portfolio integrations. Focuses on technological revenue management advantages.",
@@ -27,7 +25,6 @@ item1_overviews = {
     "UHAL": "Operates a diversified dual-revenue model. Utilizes heavy moving truck rental logistics to capture cross-selling self-storage demand."
 }
 
-# 2. NLP FinBERT Sentiment Breakdown (Item 7 MD&A)
 sentiment_results = {
     "PSA": {"dominant": "NEGATIVE", "positive": 0.0, "negative": 86.7, "neutral": 13.3},
     "EXR": {"dominant": "NEGATIVE", "positive": 0.0, "negative": 100.0, "neutral": 0.0},
@@ -35,7 +32,6 @@ sentiment_results = {
     "UHAL": {"dominant": "NEGATIVE", "positive": 0.0, "negative": 93.3, "neutral": 6.7}
 }
 
-# 3. Fundamental CRE Same-Store Metrics
 fundamental_results = {
     "PSA": {"ss_noi": 0.5, "revenue": 0.1, "expenses": 0.3, "occupancy": 91.5},
     "EXR": {"ss_noi": -1.7, "revenue": 0.1, "expenses": 4.9, "occupancy": 92.6},
@@ -43,10 +39,17 @@ fundamental_results = {
     "UHAL": {"ss_noi": -1.5, "revenue": -0.5, "expenses": 1.2, "occupancy": 89.0}
 }
 
+# NEW: Periodic Absolute Same-Store / Segment Figures (in thousands, $k) for Dynamic YoY
+yoy_absolute_data = {
+    "PSA": {"rev_2025": 1001021, "rev_2026": 1000833, "exp_2025": 232939, "exp_2026": 229288},
+    "EXR": {"rev_2025": 3377500, "rev_2026": 3502500, "exp_2025": 1964800, "exp_2026": 2045000},
+    "CUBE": {"rev_2025": 1012500, "rev_2026": 1018600, "exp_2025": 302200, "exp_2026": 319700},
+    "UHAL": {"rev_2025": 897913, "rev_2026": 972427, "exp_2025": 420000, "exp_2026": 455000}
+}
+
 # --- SIDEBAR NAVIGATION ---
 st.sidebar.header("Company Selection")
 
-# The dropdown shows clean names, but returns the short ticker (e.g., 'PSA') to 'selected_ticker'
 selected_name = st.sidebar.selectbox(
     "Choose a self-storage operator:", 
     list(company_options.keys()), 
@@ -101,21 +104,42 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True, key="margin_squeeze_chart")
 
-# --- BONUS: COMPARATIVE DATA MATRIX ---
+
+# --- NEW: SECTION 4 DYNAMIC YEAR-OVER-YEAR (YoY) ANALYSIS ---
 st.divider()
-st.subheader("🔍 Aggregated Sector Matrix")
+st.subheader("🔄 Section 4: Dynamic Year-over-Year (YoY) Spreads (2025 vs 2026)")
 
-all_data_df = pd.DataFrame({
-    "REIT": list(company_options.keys()),
-    "FinBERT Tone": [sentiment_results[tk]["dominant"] for tk in company_options.values()],
-    "SS NOI Growth": [fundamental_results[tk]["ss_noi"] for tk in company_options.values()],
-    "Occupancy": [fundamental_results[tk]["occupancy"] for tk in company_options.values()],
-    "Rev Growth": [fundamental_results[tk]["revenue"] for tk in company_options.values()],
-    "Exp Growth": [fundamental_results[tk]["expenses"] for tk in company_options.values()],
-})
+yoy_metrics = yoy_absolute_data[selected_ticker]
+rev_growth = ((yoy_metrics["rev_2026"] - yoy_metrics["rev_2025"]) / yoy_metrics["rev_2025"]) * 100
+exp_growth = ((yoy_metrics["exp_2026"] - yoy_metrics["exp_2025"]) / yoy_metrics["exp_2025"]) * 100
+noi_spread = rev_growth - exp_growth
 
-st.dataframe(all_data_df, use_container_width=True, key="sector_matrix_table")
+col7, col8, col9 = st.columns(3)
+col7.metric("YoY Revenue Growth", f"{rev_growth:.3f}%")
+col8.metric("YoY Expense Growth", f"{exp_growth:.3f}%")
+col9.metric("Operating NOI Spread", f"{noi_spread:.3f}%")
+
+st.markdown("##### Sector Dynamic YoY Operational Matrix Comparison")
+
+# Calculate dynamically for all operators for the matrix table
+matrix_rows = []
+for full_name, ticker_key in company_options.items():
+    m_data = yoy_absolute_data[ticker_key]
+    r_gro = ((m_data["rev_2026"] - m_data["rev_2025"]) / m_data["rev_2025"]) * 100
+    e_gro = ((m_data["exp_2026"] - m_data["exp_2025"]) / m_data["exp_2025"]) * 100
+    n_spr = r_gro - e_gro
+    matrix_rows.append({
+        "Operator": full_name,
+        "2025 Rev ($k)": m_data["rev_2025"],
+        "2026 Rev ($k)": m_data["rev_2026"],
+        "Rev Growth %": round(r_gro, 3),
+        "Exp Growth %": round(e_gro, 3),
+        "Operating Spread %": round(n_spr, 3)
+    })
+
+df_yoy_matrix = pd.DataFrame(matrix_rows)
+st.dataframe(df_yoy_matrix, use_container_width=True, key="yoy_matrix_table")
 
 st.markdown("""
-**Underwriter Insight:** A heavily defensive NLP score paired with flat Rev/Exp spreads indicates margin compression driven by promotional concessions, high property taxes, and localized supply absorption.
+**Underwriter Insight:** Dynamic YoY spreading isolates true operational inflection points. Negative expense growth combined with flat revenue indicates effective expense containment and margin preservation.
 """)
