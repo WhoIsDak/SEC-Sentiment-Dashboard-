@@ -9,7 +9,7 @@ st.set_page_config(page_title="Self-Storage Institutional Health Index", layout=
 st.title("📊 Self-Storage REIT Institutional Health Index")
 st.write("Triangulating descriptive operational moats, NLP risk sentiment (FinBERT), and fundamental Same-Store metrics.")
 
-# --- DATABASE / DICTIONARIES (Tested in Colab) ---
+# --- DATABASE / DICTIONARIES (Combined NLP + Fundamentals) ---
 
 # 1. Descriptive Item 1 Overviews
 item1_overviews = {
@@ -37,8 +37,13 @@ fundamental_results = {
 
 # --- SIDEBAR NAVIGATION ---
 st.sidebar.header("Company Selection")
-# Added a unique key to prevent StreamlitDuplicateElementId errors
-selected_company = st.sidebar.selectbox("Choose a self-storage operator:", list(item1_overviews.keys()), key="company_select")
+
+# Explicit, permanent key added to avoid Streamlit Duplicate/Identity crashes
+selected_company = st.sidebar.selectbox(
+    "Choose a self-storage operator:", 
+    list(item1_overviews.keys()), 
+    key="company_main_dropdown"
+)
 
 st.header(f"Operational Profile: {selected_company}")
 
@@ -51,7 +56,6 @@ st.subheader("🤖 Section 2: Operational Headwinds (Item 7 NLP FinBERT)")
 
 comp_sent = sentiment_results[selected_company]
 
-# Display dominant tone using status indicators
 if comp_sent["dominant"] == "NEGATIVE":
     st.error(f"FinBERT Defensive/Risk Tone: {comp_sent['dominant']}")
 else:
@@ -86,11 +90,12 @@ fig.update_layout(
     xaxis_title="Operator",
     yaxis_title="Growth Percentage (%)"
 )
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, use_container_width=True, key="margin_squeeze_chart")
 
 # --- BONUS: COMPARATIVE DATA MATRIX ---
 st.divider()
 st.subheader("🔍 Aggregated Sector Matrix")
+
 all_data_df = pd.DataFrame({
     "REIT": list(item1_overviews.keys()),
     "FinBERT Tone": [s["dominant"] for s in sentiment_results.values()],
@@ -99,7 +104,8 @@ all_data_df = pd.DataFrame({
     "Rev Growth": [f["revenue"] for f in fundamental_results.values()],
     "Exp Growth": [f["expenses"] for f in fundamental_results.values()],
 })
-st.dataframe(all_data_df, use_container_width=True)
+
+st.dataframe(all_data_df, use_container_width=True, key="sector_matrix_table")
 
 st.markdown("""
 **Underwriter Insight:** A heavily defensive NLP score paired with flat Rev/Exp spreads indicates margin compression driven by promotional concessions, high property taxes, and localized supply absorption.
