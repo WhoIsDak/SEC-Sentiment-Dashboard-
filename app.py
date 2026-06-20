@@ -7,31 +7,31 @@ st.set_page_config(page_title="Self-Storage SEC Sentiment Analyzer", layout="wid
 st.title("📊 Self-Storage Institutional Sentiment Dashboard")
 st.write("Analyzing Management's Discussion & Analysis (MD&A) from 10-K filings using FinBERT NLP.")
 
-# Hardcoded accumulation scores from your Colab analysis
+# Refined percentage breakdowns from Colab analysis
 sentiment_data = {
     "Public Storage (PSA)": {
         "dominant": "NEGATIVE", 
-        "positive": 0.82, 
-        "negative": 0.94, 
-        "neutral": 0.65
+        "positive": 0.0, 
+        "negative": 86.7, 
+        "neutral": 13.3
     },
     "Extra Space Storage (EXR)": {
         "dominant": "NEGATIVE", 
-        "positive": 0.00, 
-        "negative": 2.78, 
-        "neutral": 0.00
+        "positive": 0.0, 
+        "negative": 100.0, 
+        "neutral": 0.0
     },
     "CubeSmart (CUBE)": {
         "dominant": "NEGATIVE", 
-        "positive": 0.00, 
-        "negative": 2.79, 
-        "neutral": 0.00
+        "positive": 6.7, 
+        "negative": 93.3, 
+        "neutral": 0.0
     },
     "U-Haul (UHAL)": {
         "dominant": "NEGATIVE", 
-        "positive": 0.00, 
-        "negative": 2.70, 
-        "neutral": 0.00
+        "positive": 0.0, 
+        "negative": 93.3, 
+        "neutral": 6.7
     }
 }
 
@@ -50,21 +50,21 @@ if company_stats["dominant"] == "NEGATIVE":
 else:
     st.success(f"Dominant Tone: {company_stats['dominant']}")
 
-# Create a clean sub-layout for the raw accumulation scores
+# Create a clean sub-layout for the percentage scores
 col1, col2, col3 = st.columns(3)
-col1.metric("Negative Sentiment Score", f"{company_stats['negative']:.2f}")
-col2.metric("Neutral Sentiment Score", f"{company_stats['neutral']:.2f}")
-col3.metric("Positive Sentiment Score", f"{company_stats['positive']:.2f}")
+col1.metric("Negative Sentiment", f"{company_stats['negative']:.1f}%")
+col2.metric("Neutral Sentiment", f"{company_stats['neutral']:.1f}%")
+col3.metric("Positive Sentiment", f"{company_stats['positive']:.1f}%")
 
-# Add a visual bar chart of the breakdown 
-st.subheader("Sentiment Accumulation Breakdown")
+# Add a visual bar chart of the breakdown (color argument removed to prevent StreamlitColorLengthError)
+st.subheader("Sentiment Breakdown (%)")
 chart_data = {
     "Sentiment Type": ["Negative", "Neutral", "Positive"],
-    "Score": [company_stats['negative'], company_stats['neutral'], company_stats['positive']]
+    "Percentage": [company_stats['negative'], company_stats['neutral'], company_stats['positive']]
 }
-st.bar_chart(data=chart_data, x="Sentiment Type", y="Score")
+st.bar_chart(data=chart_data, x="Sentiment Type", y="Percentage")
 
-# Add contextual notes (your domain expertise) explaining the findings
+# Add contextual notes (domain expertise) explaining the findings
 st.info("""
-**Contextual CRE Brokerage Insight:** The uniform negative tone across all major REITs highlights systemic headwinds in the self-storage sector, primarily driven by promotional concessions, narrowing street rates versus in-place rents, and supply normalization in sunbelt markets.
+**Contextual CRE Brokerage Insight:** A heavily skewed negative tone in Item 7 (MD&A) is characteristic of legal disclosures during cyclical real estate headwinds. The sentiment reflects systemic pressures such as promotional concessions, narrowing street rates versus in-place legacy rents, and elevated property operational expenses (taxes/insurance). 
 """)
