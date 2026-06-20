@@ -9,14 +9,22 @@ st.set_page_config(page_title="Self-Storage Institutional Health Index", layout=
 st.title("📊 Self-Storage REIT Institutional Health Index")
 st.write("Triangulating descriptive operational moats, NLP risk sentiment (FinBERT), and fundamental Same-Store metrics.")
 
-# --- DATABASE / DICTIONARIES (Combined NLP + Fundamentals) ---
+# --- DATABASE / DICTIONARIES (Standardized by Ticker Keys) ---
 
-# 1. Descriptive Item 1 Overviews
+# Mapping dictionary for the dropdown: Display Name -> Ticker Key
+company_options = {
+    "Public Storage (PSA)": "PSA",
+    "Extra Space Storage (EXR)": "EXR",
+    "CubeSmart (CUBE)": "CUBE",
+    "U-Haul (UHAL)": "UHAL"
+}
+
+# 1. Descriptive Item 1 Overviews (Using strictly Ticker keys)
 item1_overviews = {
-    "Public Storage (PSA)": "Industry giant with massive geographic scale, high operating margins, and substantial balance sheet reserves. Competes heavily on local economies of scale and brand recognition.",
-    "Extra Space Storage (EXR)": "Sunbelt-heavy exposure with an aggressive third-party management platform and large portfolio integrations. Focuses on technological revenue management advantages.",
-    "CubeSmart (CUBE)": "Focuses on stabilized urban and suburban core portfolios. Strategically shielded from heavy Sunbelt new supply influxes, maintaining a defensive asset footprint.",
-    "U-Haul (UHAL)": "Operates a diversified dual-revenue model. Utilizes heavy moving truck rental logistics to capture cross-selling self-storage demand."
+    "PSA": "Industry giant with massive geographic scale, high operating margins, and substantial balance sheet reserves. Competes heavily on local economies of scale and brand recognition.",
+    "EXR": "Sunbelt-heavy exposure with an aggressive third-party management platform and large portfolio integrations. Focuses on technological revenue management advantages.",
+    "CUBE": "Focuses on stabilized urban and suburban core portfolios. Strategically shielded from heavy Sunbelt new supply influxes, maintaining a defensive asset footprint.",
+    "UHAL": "Operates a diversified dual-revenue model. Utilizes heavy moving truck rental logistics to capture cross-selling self-storage demand."
 }
 
 # 2. NLP FinBERT Sentiment Breakdown (Item 7 MD&A)
@@ -38,23 +46,24 @@ fundamental_results = {
 # --- SIDEBAR NAVIGATION ---
 st.sidebar.header("Company Selection")
 
-# Explicit, permanent key added to avoid Streamlit Duplicate/Identity crashes
-selected_company = st.sidebar.selectbox(
+# The dropdown shows clean names, but returns the short ticker (e.g., 'PSA') to 'selected_ticker'
+selected_name = st.sidebar.selectbox(
     "Choose a self-storage operator:", 
-    list(item1_overviews.keys()), 
+    list(company_options.keys()), 
     key="company_main_dropdown"
 )
+selected_ticker = company_options[selected_name]
 
-st.header(f"Operational Profile: {selected_company}")
+st.header(f"Operational Profile: {selected_name}")
 
 # --- SECTION 1: ITEM 1 STRATEGIC OVERVIEW ---
 st.subheader("🏛️ Section 1: Strategic Overview (Item 1 Baseline)")
-st.info(item1_overviews[selected_company])
+st.info(item1_overviews[selected_ticker])
 
 # --- SECTION 2: ITEM 7 NLP SENTIMENT ---
 st.subheader("🤖 Section 2: Operational Headwinds (Item 7 NLP FinBERT)")
 
-comp_sent = sentiment_results[selected_company]
+comp_sent = sentiment_results[selected_ticker]
 
 if comp_sent["dominant"] == "NEGATIVE":
     st.error(f"FinBERT Defensive/Risk Tone: {comp_sent['dominant']}")
@@ -69,7 +78,7 @@ col3.metric("Positive Sentiment", f"{comp_sent['positive']:.1f}%")
 # --- SECTION 3: HARD FUNDAMENTALS (SAME-STORE) ---
 st.subheader("📈 Section 3: Hard Fundamentals (Same-Store Metrics)")
 
-fund_stats = fundamental_results[selected_company]
+fund_stats = fundamental_results[selected_ticker]
 
 col4, col5, col6 = st.columns(3)
 col4.metric("Same-Store NOI Growth", f"{fund_stats['ss_noi']}%")
@@ -80,8 +89,8 @@ col6.metric("Revenue Growth", f"+{fund_stats['revenue']}%")
 st.markdown("##### Same-Store Revenue vs. Expense Growth (Margin Squeeze Check)")
 
 fig = go.Figure(data=[
-    go.Bar(name='Revenue Growth', x=[selected_company], y=[fund_stats['revenue']], marker_color='#00CC99'),
-    go.Bar(name='Expense Growth', x=[selected_company], y=[fund_stats['expenses']], marker_color='#FF4B4B')
+    go.Bar(name='Revenue Growth', x=[selected_name], y=[fund_stats['revenue']], marker_color='#00CC99'),
+    go.Bar(name='Expense Growth', x=[selected_name], y=[fund_stats['expenses']], marker_color='#FF4B4B')
 ])
 fig.update_layout(
     barmode='group', 
@@ -97,12 +106,12 @@ st.divider()
 st.subheader("🔍 Aggregated Sector Matrix")
 
 all_data_df = pd.DataFrame({
-    "REIT": list(item1_overviews.keys()),
-    "FinBERT Tone": [s["dominant"] for s in sentiment_results.values()],
-    "SS NOI Growth": [f["ss_noi"] for f in fundamental_results.values()],
-    "Occupancy": [f["occupancy"] for f in fundamental_results.values()],
-    "Rev Growth": [f["revenue"] for f in fundamental_results.values()],
-    "Exp Growth": [f["expenses"] for f in fundamental_results.values()],
+    "REIT": list(company_options.keys()),
+    "FinBERT Tone": [sentiment_results[tk]["dominant"] for tk in company_options.values()],
+    "SS NOI Growth": [fundamental_results[tk]["ss_noi"] for tk in company_options.values()],
+    "Occupancy": [fundamental_results[tk]["occupancy"] for tk in company_options.values()],
+    "Rev Growth": [fundamental_results[tk]["revenue"] for tk in company_options.values()],
+    "Exp Growth": [fundamental_results[tk]["expenses"] for tk in company_options.values()],
 })
 
 st.dataframe(all_data_df, use_container_width=True, key="sector_matrix_table")
