@@ -1,145 +1,102 @@
 import streamlit as st
-import plotly.graph_objects as go
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Set up the page configuration
-st.set_page_config(page_title="Self-Storage Institutional Health Index", layout="wide")
+# Set page configuration
+st.set_page_config(page_title="Self-Storage 10-K NLP Analyzer", layout="wide")
 
-# Title and introduction
-st.title("📊 Self-Storage REIT Institutional Health Index")
-st.write("Triangulating descriptive operational moats, NLP risk sentiment (FinBERT), and fundamental Same-Store metrics.")
+# --- Dummy Data Setup (Replace with your actual loaded DataFrames/Outputs) ---
+@st.cache_data
+def load_nlp_data():
+    # Simulating the dataframes you built in Colab
+    df_sent = pd.DataFrame({
+        "Compound_Sentiment": [0.25, 0.18, 0.31, 0.05, 0.22]
+    }, index=["PSA", "EXR", "CUBE", "NSA", "SELF"])
+    
+    df_drift = pd.DataFrame({
+        "Item_7_Drift": [0.45, 0.22, 0.61, 0.15, 0.38]
+    }, index=["PSA", "EXR", "CUBE", "NSA", "SELF"])
+    
+    keywords = ["occupancy", "same-store", "supply", "street rates", "development"]
+    df_keywords = pd.DataFrame({
+        "occupancy": [12, 15, 10, 8, 14],
+        "same-store": [8, 10, 6, 5, 9],
+        "supply": [5, 7, 9, 3, 6],
+        "street rates": [6, 8, 4, 2, 5],
+        "development": [4, 6, 8, 2, 5]
+    }, index=["PSA", "EXR", "CUBE", "NSA", "SELF"])
+    
+    return df_sent, df_drift, df_keywords
 
-# --- DATABASE / DICTIONARIES (Standardized by Ticker Keys) ---
+df_mda_sent, df_mda_drift, df_mda_keywords = load_nlp_data()
 
-company_options = {
-    "Public Storage (PSA)": "PSA",
-    "Extra Space Storage (EXR)": "EXR",
-    "CubeSmart (CUBE)": "CUBE",
-    "U-Haul (UHAL)": "UHAL"
-}
+# --- App Layout ---
+st.title("🏢 Self-Storage REIT 10-K NLP & Strategy Dashboard")
+st.write("Analyze operational focus, MD&A sentiment, and strategic drift across self-storage operators using SEC 10-K filings.")
 
-item1_overviews = {
-    "PSA": "Industry giant with massive geographic scale, high operating margins, and substantial balance sheet reserves. Competes heavily on local economies of scale and brand recognition.",
-    "EXR": "Sunbelt-heavy exposure with an aggressive third-party management platform and large portfolio integrations. Focuses on technological revenue management advantages.",
-    "CUBE": "Focuses on stabilized urban and suburban core portfolios. Strategically shielded from heavy Sunbelt new supply influxes, maintaining a defensive asset footprint.",
-    "UHAL": "Operates a diversified dual-revenue model. Utilizes heavy moving truck rental logistics to capture cross-selling self-storage demand."
-}
+# Sidebar navigation
+st.sidebar.header("Dashboard Views")
+view = st.sidebar.selectbox("Choose Analysis Section", ["Executive Summary", "Item 7 Sentiment", "Keyword Frequencies", "Strategic Drift (YoY)"])
 
-sentiment_results = {
-    "PSA": {"dominant": "NEGATIVE", "positive": 0.0, "negative": 86.7, "neutral": 13.3},
-    "EXR": {"dominant": "NEGATIVE", "positive": 0.0, "negative": 100.0, "neutral": 0.0},
-    "CUBE": {"dominant": "NEGATIVE", "positive": 6.7, "negative": 93.3, "neutral": 0.0},
-    "UHAL": {"dominant": "NEGATIVE", "positive": 0.0, "negative": 93.3, "neutral": 6.7}
-}
+# --- View 1: Executive Summary ---
+if view == "Executive Summary":
+    st.subheader("Overview of Self-Storage Sector")
+    st.markdown("Use the sidebar to navigate through targeted NLP analyses run on Item 7 (Management's Discussion & Analysis).")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("### Operational Sentiment")
+        st.dataframe(df_mda_sent, use_container_width=True)
+    with col2:
+        st.markdown("### Strategic Drift Score")
+        st.dataframe(df_mda_drift, use_container_width=True)
 
-fundamental_results = {
-    "PSA": {"ss_noi": 0.5, "revenue": 0.1, "expenses": 0.3, "occupancy": 91.5},
-    "EXR": {"ss_noi": -1.7, "revenue": 0.1, "expenses": 4.9, "occupancy": 92.6},
-    "CUBE": {"ss_noi": -1.1, "revenue": -0.1, "expenses": 2.9, "occupancy": 88.6},
-    "UHAL": {"ss_noi": -1.5, "revenue": -0.5, "expenses": 1.2, "occupancy": 89.0}
-}
+# --- View 2: Sentiment Analysis ---
+elif view == "Item 7 Sentiment":
+    st.subheader("Item 7 (MD&A) Operational Sentiment")
+    
+    fig, ax = plt.subplots(figsize=(10, 4))
+    sns.barplot(
+        x=df_mda_sent.index, 
+        y=df_mda_sent['Compound_Sentiment'], 
+        palette="coolwarm", 
+        hue=df_mda_sent['Compound_Sentiment'], 
+        legend=False,
+        ax=ax
+    )
+    ax.axhline(0, color='gray', linestyle='--', linewidth=1)
+    ax.set_title("Item 7 (MD&A) Sentiment Across Self-Storage REITs", fontsize=14)
+    ax.set_xlabel("REIT Ticker")
+    ax.set_ylabel("Compound Sentiment Score")
+    st.pyplot(fig)
 
-# NEW: Periodic Absolute Same-Store / Segment Figures (in thousands, $k) for Dynamic YoY
-yoy_absolute_data = {
-    "PSA": {"rev_2025": 1001021, "rev_2026": 1000833, "exp_2025": 232939, "exp_2026": 229288},
-    "EXR": {"rev_2025": 3377500, "rev_2026": 3502500, "exp_2025": 1964800, "exp_2026": 2045000},
-    "CUBE": {"rev_2025": 1012500, "rev_2026": 1018600, "exp_2025": 302200, "exp_2026": 319700},
-    "UHAL": {"rev_2025": 897913, "rev_2026": 972427, "exp_2025": 420000, "exp_2026": 455000}
-}
+# --- View 3: Keyword Frequencies ---
+elif view == "Keyword Frequencies":
+    st.subheader("Operational & Macro Keyword Heatmap")
+    
+    fig, ax = plt.subplots(figsize=(12, 5))
+    sns.heatmap(df_mda_keywords, annot=True, cmap="Blues", fmt="d", ax=ax)
+    ax.set_title("Item 7 (MD&A) Keyword Frequencies in Self-Storage 10-Ks", fontsize=14)
+    ax.set_ylabel("REIT Ticker")
+    ax.set_xlabel("Key Operational Terms")
+    plt.xticks(rotation=30, ha="right")
+    st.pyplot(fig)
 
-# --- SIDEBAR NAVIGATION ---
-st.sidebar.header("Company Selection")
-
-selected_name = st.sidebar.selectbox(
-    "Choose a self-storage operator:", 
-    list(company_options.keys()), 
-    key="company_main_dropdown"
-)
-selected_ticker = company_options[selected_name]
-
-st.header(f"Operational Profile: {selected_name}")
-
-# --- SECTION 1: ITEM 1 STRATEGIC OVERVIEW ---
-st.subheader("🏛️ Section 1: Strategic Overview (Item 1 Baseline)")
-st.info(item1_overviews[selected_ticker])
-
-# --- SECTION 2: ITEM 7 NLP SENTIMENT ---
-st.subheader("🤖 Section 2: Operational Headwinds (Item 7 NLP FinBERT)")
-
-comp_sent = sentiment_results[selected_ticker]
-
-if comp_sent["dominant"] == "NEGATIVE":
-    st.error(f"FinBERT Defensive/Risk Tone: {comp_sent['dominant']}")
-else:
-    st.success(f"FinBERT Defensive/Risk Tone: {comp_sent['dominant']}")
-
-col1, col2, col3 = st.columns(3)
-col1.metric("Negative Sentiment", f"{comp_sent['negative']:.1f}%")
-col2.metric("Neutral Sentiment", f"{comp_sent['neutral']:.1f}%")
-col3.metric("Positive Sentiment", f"{comp_sent['positive']:.1f}%")
-
-# --- SECTION 3: HARD FUNDAMENTALS (SAME-STORE) ---
-st.subheader("📈 Section 3: Hard Fundamentals (Same-Store Metrics)")
-
-fund_stats = fundamental_results[selected_ticker]
-
-col4, col5, col6 = st.columns(3)
-col4.metric("Same-Store NOI Growth", f"{fund_stats['ss_noi']}%")
-col5.metric("Physical Occupancy", f"{fund_stats['occupancy']}%")
-col6.metric("Revenue Growth", f"+{fund_stats['revenue']}%")
-
-# Plotly Grouped Bar Chart for Revenue vs Expense Spreads
-st.markdown("##### Same-Store Revenue vs. Expense Growth (Margin Squeeze Check)")
-
-fig = go.Figure(data=[
-    go.Bar(name='Revenue Growth', x=[selected_name], y=[fund_stats['revenue']], marker_color='#00CC99'),
-    go.Bar(name='Expense Growth', x=[selected_name], y=[fund_stats['expenses']], marker_color='#FF4B4B')
-])
-fig.update_layout(
-    barmode='group', 
-    height=350, 
-    margin=dict(l=20, r=20, t=20, b=20),
-    xaxis_title="Operator",
-    yaxis_title="Growth Percentage (%)"
-)
-st.plotly_chart(fig, use_container_width=True, key="margin_squeeze_chart")
-
-
-# --- NEW: SECTION 4 DYNAMIC YEAR-OVER-YEAR (YoY) ANALYSIS ---
-st.divider()
-st.subheader("🔄 Section 4: Dynamic Year-over-Year (YoY) Spreads (2025 vs 2026)")
-
-yoy_metrics = yoy_absolute_data[selected_ticker]
-rev_growth = ((yoy_metrics["rev_2026"] - yoy_metrics["rev_2025"]) / yoy_metrics["rev_2025"]) * 100
-exp_growth = ((yoy_metrics["exp_2026"] - yoy_metrics["exp_2025"]) / yoy_metrics["exp_2025"]) * 100
-noi_spread = rev_growth - exp_growth
-
-col7, col8, col9 = st.columns(3)
-col7.metric("YoY Revenue Growth", f"{rev_growth:.3f}%")
-col8.metric("YoY Expense Growth", f"{exp_growth:.3f}%")
-col9.metric("Operating NOI Spread", f"{noi_spread:.3f}%")
-
-st.markdown("##### Sector Dynamic YoY Operational Matrix Comparison")
-
-# Calculate dynamically for all operators for the matrix table
-matrix_rows = []
-for full_name, ticker_key in company_options.items():
-    m_data = yoy_absolute_data[ticker_key]
-    r_gro = ((m_data["rev_2026"] - m_data["rev_2025"]) / m_data["rev_2025"]) * 100
-    e_gro = ((m_data["exp_2026"] - m_data["exp_2025"]) / m_data["exp_2025"]) * 100
-    n_spr = r_gro - e_gro
-    matrix_rows.append({
-        "Operator": full_name,
-        "2025 Rev ($k)": m_data["rev_2025"],
-        "2026 Rev ($k)": m_data["rev_2026"],
-        "Rev Growth %": round(r_gro, 3),
-        "Exp Growth %": round(e_gro, 3),
-        "Operating Spread %": round(n_spr, 3)
-    })
-
-df_yoy_matrix = pd.DataFrame(matrix_rows)
-st.dataframe(df_yoy_matrix, use_container_width=True, key="yoy_matrix_table")
-
-st.markdown("""
-**Underwriter Insight:** Dynamic YoY spreading isolates true operational inflection points. Negative expense growth combined with flat revenue indicates effective expense containment and margin preservation.
-""")
+# --- View 4: Strategic Drift ---
+elif view == "Strategic Drift":
+    st.subheader("10-K Strategic Drift (YoY Operational Changes)")
+    
+    fig, ax = plt.subplots(figsize=(10, 4))
+    sns.barplot(
+        x=df_mda_drift.index, 
+        y=df_mda_drift['Item_7_Drift'], 
+        palette="magma",
+        hue=df_mda_drift.index,
+        legend=False,
+        ax=ax
+    )
+    ax.set_title("Item 7 Strategic Drift (YoY Operational Changes)", fontsize=14)
+    ax.set_xlabel("REIT Ticker")
+    ax.set_ylabel("Drift Score (0 = Identical, 1 = Completely Different)")
+    st.pyplot(fig)
